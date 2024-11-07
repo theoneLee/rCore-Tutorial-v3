@@ -1,0 +1,12 @@
+[build] #设置我们的默认编译目标
+target = "riscv64gc-unknown-none-elf"
+
+
+#链接器默认的内存布局并不能符合我们的要求，为了实现与 Qemu 正确对接，我们可以通过 链接脚本 (Linker Script) 调整链接器的行为，使得最终生成的可执行文件的内存布局符合Qemu的预期，即内核第一条指令的地址应该位于 0x80200000
+#调整编译选项，设置链接脚本以及强制打开 fp 选项，这样才会避免 fp 相关指令被编译器优化掉. 可以使用 rust-objdump 工具反汇编内核或者应用程序可执行文件，并找到某个函数的入口
+[target.riscv64gc-unknown-none-elf]
+rustflags=[
+    "-Clink-arg=-Tsrc/linker.ld", "-Cforce-frame-pointers=yes"
+]
+
+#
