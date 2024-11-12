@@ -1,12 +1,15 @@
-
+#![feature(panic_info_message)]
 #![no_std]
 #![no_main]
 mod lang_items;
-
+mod sbi;
 //不使用 Rust 标准库 std 转而使用核心库 core
 // fn main() {
 //     // println!("Hello, world!");
 // }
+
+#[macro_use]
+mod console;
 
 use core::arch::global_asm;
 global_asm!(include_str!("entry.asm"));
@@ -19,7 +22,8 @@ global_asm!(include_str!("entry.asm"));
 #[no_mangle]
 pub fn rust_main()->!{
     clear_bss();
-    loop{}
+    println!("Hello, world!theone");
+    panic!("Shutdown machine!");
 }
 
 
@@ -29,15 +33,25 @@ pub fn rust_main()->!{
 函数 clear_bss 中，我们会尝试从其他地方找到全局符号 sbss 和 ebss ，
 它们由链接脚本 linker.ld 给出，并分别指出需要被清零的 .bss 段的起始和终止地址。接下来我们只需遍历该地址区间并逐字节进行清零即可。
  */
-fn clear_bss(){
-    extern "C"{ //调用它的时候要遵从目标平台的 C 语言调用规范
+// fn clear_bss(){
+//     extern "C"{ //调用它的时候要遵从目标平台的 C 语言调用规范
+//         fn sbss();
+//         fn ebss();
+//     }
+//     //这里只是引用位置标志并将其转成 usize 获取它的地址。由此可以知道 .bss 段两端的地址。
+//     (sbss as usize..ebss as usize).for_each(|a|{
+//         unsafe{ //将 .bss 段内的一个地址转化为一个 裸指针 (Raw Pointer)，并将它指向的值修改为 0
+//             (a as *mut u8).write_volatile(0)
+//         }
+//     });
+// }
+
+/// clear BSS segment
+pub fn clear_bss() {
+    extern "C" {
         fn sbss();
         fn ebss();
     }
-    //这里只是引用位置标志并将其转成 usize 获取它的地址。由此可以知道 .bss 段两端的地址。
-    (sbss as usize..ebss as usize).for_each(|a|{
-        unsafe{ //将 .bss 段内的一个地址转化为一个 裸指针 (Raw Pointer)，并将它指向的值修改为 0
-            (a as *mut u8).write_volatile(0)
-        }
-    });
+    (sbss as usize..ebss as usize).for_each(|a| unsafe { (a as *mut u8).write_volatile(0) });
 }
+
